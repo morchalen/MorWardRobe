@@ -1,0 +1,17 @@
+上传
+
+
+git add .   
+git commit -m "shangchuan" 
+git push
+
+
+下拉
+
+
+# 1. 放弃所有本地修改
+
+git restore .
+
+
+git pull
