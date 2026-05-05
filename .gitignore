@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+bin/
+*.exe
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# Python (AI服务预留)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# MinIO data
+minio-data/
+
+# Temp
+tmp/
+temp/
+.tmp/
+
+# Uploads and secrets
+uploads/
+AccessKey.txt
+*AccessKey*

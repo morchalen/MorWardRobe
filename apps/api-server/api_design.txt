@@ -1,0 +1,832 @@
+SmartWardrobe 智能衣柜 API 接口设计文档（精简版）
+================================================
+
+【版本】V1.0 - 原型阶段
+【更新日期】2026-05-03
+【适用平台】微信小程序 / iOS / Android / Web / Linux桌面端
+
+================================================
+基础信息
+================================================
+- 基础URL: https://api.smartwardrobe.com/v1  （当前开发环境: http://localhost:8080/v1）
+- 认证方式: Bearer Token (JWT)
+- 数据格式: JSON (UTF-8)
+- 编码: UTF-8
+
+================================================
+一、用户认证模块 (Auth) - 核心功能
+================================================
+
+1. 【用户注册】创建新账号
+------------------------------------------------
+接口地址: POST /v1/auth/register
+是否需要认证: 否（公开接口）
+
+请求参数:
+{
+  "email": "string (必填)",      // 用户邮箱，作为唯一标识和登录账号
+  "password": "string (必填)"    // 密码，最少6位字符
+}
+
+成功响应 (201 Created):
+{
+  "code": 201,                   // 状态码：201表示创建成功
+  "message": "created",          // 中文提示：资源已创建
+  "data": {
+    "access_token": "eyJhbG...", // 访问令牌，24小时有效，用于调用其他API
+    "refresh_token": "eyJhbG...",// 刷新令牌，7天有效，用于获取新的access_token
+    "expires_in": 86400,         // access_token有效期（秒），即24小时
+    "user": {                    // 用户基本信息
+      "id": "uuid字符串",        // 用户唯一ID，36位UUID格式
+      "email": "user@example.com", // 注册邮箱，也是登录账号
+      "avatar_url": "",         // 头像链接（空字符串表示未设置头像）
+      "role": "user",           // 用户角色：user(普通用户) / admin(管理员)
+      "created_at": "2026-05-03T19:09:25+08:00"  // 账号创建时间（ISO 8601格式）
+    }
+  },
+  "meta": {                     // 元数据（调试用）
+    "request_id": "",           // 请求唯一标识（用于日志追踪）
+    "timestamp": "2026-05-03T11:09:25Z"  // 服务器响应时间
+  }
+}
+
+错误响应示例:
+{
+  "code": 40901,                 // 错误码：邮箱已被注册
+  "error": "DUPLICATE_RESOURCE", // 错误类型（英文，便于程序判断）
+  "message": "Email already registered",  // 错误描述（可展示给用户）
+  "request_id": ""               // 请求ID（用于排查问题）
+}
+
+使用场景:
+- 新用户首次使用时注册账号
+- 前端需校验邮箱格式和密码强度
+- 注册成功后自动登录（返回token）
+
+
+2. 【用户登录】获取访问令牌
+------------------------------------------------
+接口地址: POST /v1/auth/login
+是否需要认证: 否（公开接口）
+
+请求参数:
+{
+  "email": "string (必填)",      // 注册时使用的邮箱
+  "password": "string (必填)"    // 密码
+}
+
+成功响应 (200 OK):
+结构与注册接口相同，返回 access_token + refresh_token + user 信息
+
+错误响应 (401 Unauthorized):
+{
+  "code": 70001,
+  "error": "UNKNOWN_ERROR",
+  "message": "Invalid email or password",  // 统一错误提示（不区分用户不存在或密码错误，防止暴力破解）
+  "request_id": ""
+}
+
+安全机制:
+- 密码使用 bcrypt 加密存储（不可逆）
+- 错误提示统一化，防止枚举攻击
+- 仅允许活跃状态的用户登录
+
+
+3. 【用户登出】退出登录
+------------------------------------------------
+接口地址: POST /v1/auth/logout
+是否需要认证: 是（需要在Header中携带Token）
+Authorization: Bearer <your_access_token>
+
+成功响应 (204 No Content):
+HTTP/1.1 204 No Content
+（无返回内容，仅返回204状态码表示成功）
+
+前端处理建议:
+- 清除本地存储的 Token
+- 跳转到登录页面
+- 小程序端：wx.clearStorageSync()
+
+
+4. 【获取当前用户信息】查看个人资料
+------------------------------------------------
+接口地址: GET /v1/auth/me
+是否需要认证: 是
+Authorization: Bearer <your_access_token>
+
+成功响应 (200 OK):
+{
+  "code": 200,                   // 状态码：200表示成功
+  "message": "success",          // 提示：操作成功
+  "data": {
+    "id": "uuid字符串",
+    "email": "user@example.com",
+    "avatar_url": "",
+    "role": "user",
+    "created_at": "2026-05-03T19:09:25+08:00"
+  }
+}
+
+使用场景:
+- 应用启动时验证 Token 是否有效
+- 个人中心页面展示用户信息
+- 权限判断（根据 role 字段）
+
+
+================================================
+二、衣物管理模块 (Clothing) - 核心业务
+================================================
+
+5. 【获取衣物列表】查看我的衣柜
+------------------------------------------------
+接口地址: GET /v1/clothes
+是否需要认证: 是
+Authorization: Bearer <your_access_token>
+
+查询参数（可选，用于筛选和分页）:
+- page: integer (默认值: 1)              // 页码，从1开始
+- per_page: integer (默认值: 20, 最大100) // 每页数量
+- category: string                       // 衣物分类筛选
+  可选值: tops(上装) / bottoms(下装) / shoes(鞋履) / accessories(配饰)
+- wardrobe_type: string (默认值: thin)   // 衣柜类型
+  可选值: thin(薄衣/春秋款) / thick(厚衣/冬季款) / all(全部)
+- search: string                         // 搜索关键词（模糊匹配名称、颜色、子分类）
+
+成功响应 (200 OK):
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "items": [                          // 衣物列表数组
+      {
+        "id": "uuid-xxx",               // 衣物唯一ID
+        "name": "红色T恤",              // 衣物名称（可为空）
+        "image_url": "/uploads/images/xxx.png",  // 图片路径（相对路径，需拼接域名）
+        "thumbnail_url": "/uploads/images/xxx.png", // 缩略图路径
+        "category": "tops",             // 分类：tops/bottoms/shoes/accessories
+        "subcategory": "t-shirt",       // 子分类（如：t-shirt、jeans、sneakers等）
+        "primary_color": "#FF0000",     // 主颜色（HEX色值，如 #FF0000 红色）
+        "color_name": "红色",           // 颜色中文名称
+        "material": "棉",               // 材质（如：棉、涤纶、羊毛等）
+        "seasons": ["spring","summer"], // 适用季节数组
+        "style_tags": ["casual"],       // 风格标签数组（如：casual、formal、sporty）
+        "wardrobe_type": "thin",        // 衣柜类型：thin(薄衣) / thick(厚衣)
+        "last_worn_date": "2026-04-15T00:00:00+08:00",  // 最后穿着日期（未穿过则为null）
+        "wear_count": 5,                // 穿着次数统计
+        "status": "active",             // 状态：active(正常) / pending_removal(待删除)
+        "created_at": "2026-03-01T10:00:00+08:00",  // 创建时间
+        "updated_at": "2026-04-20T14:30:00+08:00"   // 最后更新时间
+      }
+      // ... 更多衣物
+    ],
+    "pagination": {                     // 分页元数据
+      "page": 1,                        // 当前页码
+      "per_page": 20,                   // 每页数量
+      "total_items": 45,                // 总记录数
+      "total_pages": 3,                 // 总页数
+      "has_next": true,                 // 是否有下一页
+      "has_prev": false                 // 是否有上一页
+    }
+  },
+  "meta": {
+    "request_id": "",
+    "timestamp": "..."
+  }
+}
+
+多端适配建议:
+- 微信小程序: per_page 建议 10-15（单列瀑布流展示）
+- iOS/Android: per_page 建议 20（RecyclerView/CollectionView）
+- Web端: per_page 建议 20-30（Grid网格布局，响应式适配）
+- 图片处理: image_url 为相对路径，前端需拼接完整域名
+
+
+6. 【获取衣物详情】查看单件衣物信息
+------------------------------------------------
+接口地址: GET /v1/clothes/:id
+是否需要认证: 是
+路径参数:
+  :id -> 衣物的 UUID（从列表接口获取）
+
+成功响应 (200 OK):
+返回单个 Clothing 对象的完整 JSON（结构同列表中的 item）
+
+权限控制:
+- 只能查看自己上传的衣物（通过 user_id 隔离）
+- 如果 ID 不存在或不属于当前用户，返回 404 错误
+
+
+7. 【上传衣物】添加新衣物到衣柜
+------------------------------------------------
+接口地址: POST /v1/clothes/upload?wardrobe_type=thin
+是否需要认证: 是
+Content-Type: multipart/form-data（表单数据，支持文件上传）
+
+请求参数:
+文件字段:
+- images: File (必填)                  // 衣物图片文件（支持 jpg/png/webp 格式）
+  注意：虽然字段名是复数 images，但当前只取第一张图片
+
+表单字段:
+- category: string (必填)               // 分类
+  可选值: tops / bottoms / shoes / accessories
+- primary_color: string (必填)          // 主颜色 HEX 值（如 #FF0000）
+- name: string (可选)                   // 衣物名称
+- color_name: string (可选)             // 颜色中文名称（如：红色、蓝色）
+- material: string (可选)               // 材质（如：棉、涤纶、皮革）
+- subcategory: string (可选)            // 子分类（如：t-shirt、jeans、dress）
+- seasons[]: string 数组 (可选)          // 适用季节（多选）
+  可选值: spring(春) / summer(秋) / autumn(秋) / winter(冬)
+- style_tags[]: string 数组 (可选)      // 风格标签（多选）
+  示例: casual(休闲)、formal(正式)、sporty(运动)
+
+URL 查询参数:
+- wardrobe_type: string (默认值: thin)  // 衣柜类型
+  可选值: thin(薄衣) / thick(厚衣)
+
+成功响应 (201 Created):
+{
+  "code": 201,
+  "message": "created",
+  "data": {
+    "clothing_id": "uuid-new-clothing-id"  // 新创建的衣物ID
+  }
+}
+
+文件处理流程:
+1. 服务端接收图片文件
+2. 生成 UUID 文件名（防止文件名冲突）
+3. 保存到服务器的 ./uploads/images/ 目录
+4. 返回相对路径（前端需拼接域名访问）
+
+各端上传实现示例:
+
+【Web端 JavaScript/Fetch】
+const formData = new FormData();
+formData.append('images', imageFile);  // 文件对象
+formData.append('category', 'tops');
+formData.append('primary_color', '#FF0000');
+formData.append('color_name', '红色');
+
+fetch('/v1/clothes/upload?wardrobe_type=thin', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData  // 不要手动设置 Content-Type
+});
+
+【微信小程序】
+wx.chooseImage({
+  count: 1,
+  success: (res) => {
+    wx.uploadFile({
+      url: 'https://api.smartwardrobe.com/v1/clothes/upload?wardrobe_type=thin',
+      filePath: res.tempFilePaths[0],
+      name: 'images',  // 必须与服务端字段名一致
+      formData: {
+        'category': 'tops',
+        'primary_color': '#FF0000'
+      },
+      header: { 'Authorization': `Bearer ${token}` }
+    });
+  }
+});
+
+
+8. 【更新衣物信息】编辑衣物属性
+------------------------------------------------
+接口地址: PUT /v1/clothes/:id
+是否需要认证: 是
+Content-Type: application/json
+路径参数:
+  :id -> 要更新的衣物 UUID
+
+请求体 (JSON，只需传入要修改的字段):
+{
+  "name": "修改后的名称",             // 可选：修改名称
+  "category": "bottoms",             // 可选：修改分类
+  "subcategory": "jeans",            // 可选：修改子分类
+  "primary_color": "#0000FF",        // 可选：修改主颜色
+  "color_name": "蓝色",              // 可选：修改颜色名称
+  "material": "牛仔布",             // 可选：修改材质
+  "seasons": ["autumn","winter"],    // 可选：修改适用季节
+  "style_tags": ["casual"]           // 可选：修改风格标签
+}
+
+特点:
+- 灵活更新：只需提交要修改的字段，未提交的字段保持不变
+- 不能修改 id、user_id、image_url、status 等受保护字段
+
+成功响应 (200 OK):
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    // 更新后的完整衣物对象（包含所有字段的最新值）
+  }
+}
+
+
+9. 【删除衣物】移出衣柜
+------------------------------------------------
+接口地址: DELETE /v1/clothes/:id
+是否需要认证: 是
+路径参数:
+  :id -> 要删除的衣物 UUID
+
+成功响应 (200 OK):
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "message": "衣物已标记为待移出"  // 中文提示
+  }
+}
+
+重要说明（软删除机制）:
+- 不是物理删除文件，而是将 status 改为 "pending_removal"
+- 删除后的衣物不会在列表中显示
+- 数据保留在数据库中，便于未来恢复或审计
+- 生产环境可通过定时任务清理过期数据
+
+
+10. 【标记已穿着】记录穿衣记录
+------------------------------------------------
+接口地址: POST /v1/clothes/:id/worn
+是否需要认证: 是
+路径参数:
+  :id -> 衣物的 UUID
+
+成功响应 (200 OK):
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "message": "已记录穿着"  // 中文提示
+  }
+}
+
+自动更新内容:
+- wear_count（穿着次数）：自动 +1
+- last_worn_date（最后穿着日期）：自动更新为当前时间
+
+使用场景:
+- 用户每天选择穿搭后点击"我穿了这件衣服"
+- 用于统计穿衣频率，辅助断舍离决策
+- 在统计接口中识别闲置衣物（>30天未穿）
+
+
+11. 【衣柜统计】查看衣柜概览数据
+------------------------------------------------
+接口地址: GET /v1/clothes/stats
+是否需要认证: 是
+
+成功响应 (200 OK):
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "total": 45,           // 衣物总数（所有状态的正常衣物）
+    "thin_wardrobe": 28,   // 薄衣数量（春秋季衣物）
+    "thick_wardrobe": 17,  // 厚衣数量（冬季衣物）
+    "idle": 8             // 闲置数量（超过30天未穿的衣物）
+  }
+}
+
+统计维度说明:
+- total: 当前可用衣物总数（status = active）
+- thin_wardrobe: wardrobe_type = thin 的衣物数量
+- thick_wardrobe: wardrobe_type = thick 的衣物数量
+- idle: 最后穿着时间超过30天，或者从未穿过的衣物（断舍离候选）
+
+前端展示建议:
+- 首页仪表盘用数字卡片展示（类似支付宝年度账单）
+- 用环形图展示薄衣/厚衣占比
+- 当 idle > 0 时显示提醒："你有 X 件衣物超过 30 天未穿"
+
+
+================================================
+三、系统接口
+================================================
+
+12. 【健康检查】检测服务状态
+------------------------------------------------
+接口地址: GET /healthz
+是否需要认证: 否（公开接口）
+
+成功响应 (200 OK):
+{
+  "status": "ok",           // 服务状态：ok 表示正常
+  "version": "2.0.0"        // API 版本号
+}
+
+用途:
+- 负载均衡器健康探测
+- Docker/Kubernetes 就绪探针
+- 监控系统心跳检测
+- 前端检测 API 是否可达
+
+
+13. 【静态资源服务】访问上传的图片
+------------------------------------------------
+接口地址: GET /uploads/images/:filename
+是否需要认证: 否（公开接口）
+
+示例:
+GET /uploads/images/8a8f72cb-471d-4363-b983-2eb662872472.png
+
+说明:
+- 提供用户上传的衣物图片 HTTP 访问
+- 当前返回相对路径，前端需拼接完整域名
+- 生产环境应配置 CDN 加速和缓存策略
+
+
+================================================
+四、管理员接口 (Admin) [预留]
+================================================
+前缀: /v1/admin
+需要认证 + 管理员角色权限
+
+以下接口为系统管理功能，普通用户无权访问：
+
+14. 【仪表盘数据】系统运营数据
+    GET /admin/dashboard
+    返回: 用户总数、衣物总数、今日新增等统计数据
+
+15. 【用户列表】查看所有用户
+    GET /admin/users?page=1&status=active
+    参数: page(页码)、status(状态筛选)、role(角色筛选)
+    返回: 分页的用户列表
+
+16. 【修改用户角色】设置管理员
+    PUT /admin/users/:id/role
+    请求体: { "role": "admin" } 或 { "role": "user" }
+
+17. 【修改用户状态】启用/禁用账号
+    PUT /admin/users/:id/status
+    请求体: { "is_active": true } 或 { "is_active": false }
+
+18. 【删除用户】移除用户账号
+    DELETE /admin/users/:id
+
+19. 【查看所有衣物】跨用户数据查看
+    GET /admin/clothings?user_id=xxx&page=1
+    参数: user_id(按用户筛选)、page(页码)
+
+
+================================================
+五、统一响应格式规范
+================================================
+
+【成功响应】
+{
+  "code": 200 或 201,           // HTTP 业务状态码
+                             // 200: 操作成功
+                             // 201: 资源创建成功
+  "message": "success" 或 "created",  // 中文状态描述
+  "data": { ... },             // 业务数据（具体内容见各接口说明）
+  "meta": {                    // 元数据（可选，用于调试）
+    "request_id": "uuid",      // 请求追踪ID
+    "timestamp": "ISO8601时间" // 服务器响应时间戳
+  }
+}
+
+【错误响应】
+{
+  "code": 错误码,               // 业务错误码（详见第六节）
+  "error": "ERROR_TYPE",        // 错误类型（英文大写，便于程序 switch-case）
+  "message": "人类可读的错误描述",  // 可直接展示给用户的中文或英文提示
+  "request_id": "uuid"          // 请求ID（用于联系技术支持排查问题）
+}
+
+
+================================================
+六、错误码大全
+================================================
+
+【客户端错误 4xx】
+
+40001 - VALIDATION_ERROR
+  含义: 请求参数验证失败
+  HTTP状态码: 400 Bad Request
+  场景: 必填字段缺失、邮箱格式错误、密码太短等
+  示例: { "code": 40001, "error": "VALIDATION_ERROR", "message": "Key: 'registerRequest.Email' Error:Field validation for 'Email' failed on the 'email' tag" }
+
+40002 - INVALID_FILE_TYPE
+  含义: 不支持的文件类型
+  HTTP状态码: 400 Bad Request
+  场景: 上传了非图片文件（如 .pdf、.exe）
+
+40003 - FILE_SIZE_EXCEEDED
+  含义: 文件大小超出限制
+  HTTP状态码: 400 Bad Request
+  场景: 上传的图片超过大小限制（建议限制5MB）
+
+40004 - RESOURCE_NOT_FOUND
+  含义: 请求的资源不存在
+  HTTP状态码: 404 Not Found
+  场景: 查询的衣物ID或用户ID不存在
+
+40901 - DUPLICATE_RESOURCE
+  含义: 资源冲突（重复创建）
+  HTTP状态码: 409 Conflict
+  场景: 注册时邮箱已被使用
+
+
+【认证授权错误 401/403】
+
+70001 - UNKNOWN_ERROR (实际是认证失败)
+  含义: 未认证或认证失败
+  HTTP状态码: 401 Unauthorized
+  场景: Token 过期、无效 Token、密码错误等
+  处理: 前端应跳转到登录页面
+
+40100 - AUTH_TOKEN_EXPIRED
+  含义: 访问令牌已过期
+  HTTP状态码: 401 Unauthorized
+  场景: Access Token 超过24小时有效期
+  处理: 使用 Refresh Token 获取新的 Access Token
+
+40102 - INVALID_TOKEN
+  含义: 无效的令牌
+  HTTP状态码: 401 Unauthorized
+  场景: Token 被篡改或格式错误
+
+40300 - PERMISSION_DENIED
+  含义: 权限不足
+  HTTP状态码: 403 Forbidden
+  场景: 普通用户尝试访问管理员接口
+
+
+【服务器错误 5xx】
+
+50000 - INTERNAL_ERROR
+  含义: 服务器内部错误
+  HTTP状态码: 500 Internal Server Error
+  场景: 数据库连接失败、程序异常等
+  处理: 展示友好提示，联系技术支持
+
+
+================================================
+七、数据模型定义
+================================================
+
+【User 用户模型】
+{
+  "id": "UUID (36位字符串)",       // 主键，全局唯一
+  "email": "邮箱地址",             // 登录账号，唯一索引
+  "avatar_url": "头像链接",        // 可为空字符串
+  "gender": "性别",                // 可选：male/female/other
+  "declutter_mode": false,         // 断舍离模式开关
+  "max_wardrobe_size": 100,        // 衣柜最大容量限制
+  "role": "user",                  // 角色：user(普通用户) / admin(管理员)
+  "is_active": true,               // 账号状态：true(正常) / false(已禁用)
+  "created_at": "ISO8601时间",     // 创建时间
+  "updated_at": "ISO8601时间"      // 最后更新时间
+}
+注意: password_hash 字段不会在 API 中返回（安全考虑）
+
+
+【Clothing 衣物模型】
+{
+  "id": "UUID (36位字符串)",       // 主键
+  "user_id": "UUID",               // 所属用户ID（外键关联）
+  "name": "衣物名称",              // 可为空
+  "image_url": "图片相对路径",      // 如 /uploads/images/xxx.png
+  "thumbnail_url": "缩略图路径",    // 当前与 image_url 相同
+  "category": "分类",              // tops/bottoms/shoes/accessories
+  "subcategory": "子分类",         // 如 t-shirt、jeans、dress
+  "primary_color": "#HEX色值",     // 如 #FF0000（红色）
+  "color_name": "颜色中文名",      // 如 "红色"、"藏蓝色"
+  "material": "材质",              // 如 "棉"、"涤纶"、"羊毛"
+  "seasons": ["适用季节数组"],     // 如 ["spring","summer"]
+  "style_tags": ["风格标签数组"],  // 如 ["casual","formal"]
+  "wardrobe_type": "衣柜类型",     // thin(薄衣) / thick(厚衣)
+  "last_worn_date": "日期或null",  // 最后穿着时间（ISO格式，未穿过则为null）
+  "wear_count": 0,                 // 穿着次数（整数，初始为0）
+  "status": "状态",                // active(正常) / pending_removal(待删除)
+  "created_at": "ISO8601时间",     // 上传时间
+  "updated_at": "ISO8601时间"      // 最后修改时间
+}
+
+
+================================================
+八、多端适配指南
+================================================
+
+【通用原则】
+✅ 所有接口遵循 RESTful 规范
+✅ 统一使用 JSON 数据格式（UTF-8编码）
+✅ JWT 无状态认证，适合移动端
+✅ 时间格式统一为 ISO 8601（RFC3339），所有平台可直接解析
+✅ 分页参数标准化：page + per_page
+
+【微信小程序适配要点】
+1. 图片上传必须使用 wx.uploadFile()，不能用 wx.request()
+2. 文件字段名必须是 "images"（与后端 MultipartForm 字段对应）
+3. Token 存储在 wx.setStorageSync()
+4. 建议每页加载 10-15 条数据（节省流量）
+5. 图片 URL 需要拼接完整域名
+
+【iOS (Swift) 适配要点】
+1. 使用 Alamofire 的 upload(multipartFormData:) 方法上传
+2. ISO8601DateFormatter 可直接解析时间字段
+3. 建议使用 Keychain 存储 Token（更安全）
+4. 使用 Codable 协议解析 JSON
+
+【Android (Kotlin) 适配要点】
+1. 使用 Retrofit 的 @Multipart 注解 + MultipartBody.Part
+2. SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX") 解析时间
+3. 使用 EncryptedSharedPreferences 存储 Token
+4. 使用 Gson/Moshi 自动序列化
+
+【Web (React/Vue) 适配要点】
+1. 使用 axios/fetch 的 FormData 对象上传
+2. 不要手动设置 Content-Type（浏览器自动加 boundary）
+3. Token 存储在 localStorage / Cookie
+4. 使用 Axios 拦截器统一处理错误码
+
+【Linux 桌面端适配要点】
+1. 类似 Web 端的实现方式
+2. 可使用 Qt/QML 或 Electron 框架
+3. 支持 HTTP/2 和 WebSocket（如需实时功能）
+
+
+================================================
+九、前端统一错误处理示例代码
+================================================
+
+【JavaScript/TypeScript (适用于 Web 和小程序)】
+
+// api.js - 封装请求函数
+const request = async (options) => {
+  try {
+    const response = await fetch(options.url, {
+      method: options.method || 'GET',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+        'Content-Type': 'application/json'
+      },
+      body: options.data ? JSON.stringify(options.data) : undefined
+    });
+
+    const result = await response.json();
+
+    if (result.code === 200 || result.code === 201) {
+      return result.data;  // 成功，返回业务数据
+    }
+
+    // 错误处理
+    switch (result.code) {
+      case 70001:  // 认证失败
+      case 40102:  // Token无效
+        clearToken();
+        redirectToLogin();
+        throw new Error('请重新登录');
+
+      case 40100:  // Token过期
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          return request(options);  // 重试原请求
+        }
+        throw new Error('登录已过期');
+
+      case 40004:  // 资源不存在
+        showNotFoundPage();
+        throw new Error(result.message);
+
+      case 40300:  // 权限不足
+        showForbiddenPage();
+        throw new Error('没有权限执行此操作');
+
+      default:
+        showToast(result.message);  // 显示服务端返回的错误提示
+        throw new Error(result.message);
+    }
+  } catch (error) {
+    console.error('API请求失败:', error);
+    throw error;
+  }
+};
+
+
+================================================
+十、接口调用流程示例（以"上传一件衣服"为例）
+================================================
+
+完整流程:
+┌──────────┐    ┌────────────┐    ┌─────────────┐    ┌──────────────┐
+│ 1.选择图片 │───▶│ 2.前端压缩  │───▶│ 3.构建请求体  │───▶│ 4.调用上传API │
+│ (相机/相册)│    │ (质量80%)   │    │ (FormData)  │    │              │
+└──────────┘    └────────────┘    └─────────────┘    └──────┬───────┘
+                                                           │
+                                                           ▼
+                                                 ┌─────────────────┐
+                                                 │   5.服务端处理    │
+                                                 │ • 验证Token有效性 │
+                                                 │ • 校验文件类型    │
+                                                 │ • 生成UUID文件名  │
+                                                 │ • 保存到磁盘     │
+                                                 │ • 写入数据库记录  │
+                                                 └────────┬────────┘
+                                                          │
+                                                          ▼
+                                                 ┌─────────────────┐
+                                                 │ 6.返回 clothing_id│
+                                                 └────────┬────────┘
+                                                          │
+                        ┌─────────────────────────────────┘
+                        ▼
+              ┌─────────────────────┐
+              │ 7.前端处理响应       │
+              │ • 显示成功提示Toast  │
+              │ • 跳转到详情页       │
+              │ • 或刷新列表         │
+              └─────────────────────┘
+
+
+================================================
+十一、当前原型版本功能清单
+================================================
+
+✅ 已实现的核心功能（MVP 最小可行产品）：
+
+【用户认证】
+✅ 用户注册（邮箱+密码）
+✅ 用户登录（返回双Token）
+✅ 用户登出
+✅ 获取当前用户信息
+
+【衣物管理】
+✅ 获取衣物列表（分页+搜索+筛选）
+✅ 获取衣物详情
+✅ 上传衣物（图片+属性）
+✅ 更新衣物信息
+✅ 删除衣物（软删除）
+✅ 标记已穿着（记录穿衣频率）
+✅ 衣柜统计分析
+
+【系统功能】
+✅ 健康检查接口
+✅ 静态资源服务（图片访问）
+
+❌ 已移除的功能（简化设计）：
+❌ 收藏功能（is_favorite 相关）
+❌ 昵称字段（统一使用邮箱）
+❌ 文件夹管理功能
+❌ plan_type 字段（套餐类型）
+
+📌 未来迭代计划（V2.0）：
+🔲 Token 刷新接口 (POST /v1/auth/refresh)
+🔲 图片 CDN 集成（返回完整 URL）
+🔲 文件上传限制（大小/类型白名单）
+🔲 请求频率限制（防刷机制）
+🔲 Swagger/OpenAPI 文档自动生成
+🔲 AI 智能搭配推荐
+🔲 穿搭日记/日历视图
+
+
+================================================
+十二、开发环境配置
+================================================
+
+【环境变量 (.env 文件)】
+APP_PORT=8080                  # 服务端口
+APP_ENV=development           # 环境：development / production
+APP_SECRET=your-secret-key    # 应用密钥
+
+DB_TYPE=sqlite                # 数据库类型：sqlite / postgres
+DB_NAME=smartwardrobe_dev.db  # SQLite 数据库文件名
+# PostgreSQL 配置（如果使用 postgres）
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_USER=postgres
+# DB_PASSWORD=postgres
+# DB_SSLMODE=disable
+
+JWT_SECRET=change-in-production  # JWT签名密钥（生产环境必须修改！）
+JWT_EXPIRE_HOURS=24              # Access Token 有效期（小时）
+
+【启动命令】
+# 开发环境
+go run cmd/server/main.go
+
+# 构建生产版本
+go build -o smartwardrobe-api cmd/server/main.go
+./smartwardrobe-api
+
+# 运行测试
+go test -v ./...
+
+
+================================================
+十三、联系方式与技术支持
+================================================
+
+如有 API 使用问题，请联系：
+- 技术支持邮箱: tech@smartwardrobe.com
+- 问题反馈请在 GitHub 提交 Issue
+- 查看在线文档: https://docs.smartwardrobe.com/api
+
+================================================
+【文档结束】
+感谢您使用 SmartWardrobe 智能衣柜 API！

@@ -36,7 +36,7 @@ func main() {
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
 
-	router.Setup(r, db)
+	router.Setup(r, db, cfg)
 
 	port := cfg.App.Port
 	log.Printf("🚀 Server starting on port %s", port)
