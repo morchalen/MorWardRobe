@@ -14,10 +14,15 @@ import {
   InputAdornment,
   Paper,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Checkroom, Login, Book, Psychology } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Checkroom, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useAuthStore } from '@/stores';
-import { glassStyles } from '@/styles/glass';
+import { authApi } from '@/services/api';
+import { getGlassCard, getGlassButton, getGlassDialog } from '@/styles/glass';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -26,29 +31,80 @@ export function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [targetSystem, setTargetSystem] = useState<'wardrobe' | 'blog' | 'brain'>('wardrobe');
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
-  const handleSubmit = async (e: React.FormEvent, system: 'wardrobe' | 'blog' | 'brain') => {
+  // 忘记密码相关状态
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setTargetSystem(system);
 
     try {
       await login(email, password);
-      if (system === 'blog') {
-        setSuccessMessage('登录成功，正在进入博客...');
-        setTimeout(() => navigate('/blog'), 1500);
-      } else if (system === 'brain') {
-        setSuccessMessage('登录成功，正在进入大脑...');
-        setTimeout(() => navigate('/brain'), 1500);
-      } else {
-        setSuccessMessage('登录成功，欢迎回来');
-        setTimeout(() => navigate('/'), 1500);
-      }
+      setSuccessMessage('登录成功，欢迎回来');
+      setTimeout(() => navigate('/today'), 1200);
     } catch (err: any) {
       setError(err.message || '登录失败，请检查邮箱和密码');
+    }
+  };
+
+  const handleOpenResetDialog = () => {
+    setShowResetDialog(true);
+    setResetEmail(email); // 预填当前输入的邮箱
+    setResetError('');
+    setResetSuccess(false);
+    setResetNewPassword('');
+    setResetConfirmPassword('');
+  };
+
+  const handleCloseResetDialog = () => {
+    setShowResetDialog(false);
+    setResetError('');
+    setResetSuccess(false);
+  };
+
+  const handleResetPassword = async () => {
+    setResetError('');
+
+    // 简单验证
+    if (!resetEmail) {
+      setResetError('请输入邮箱地址');
+      return;
+    }
+    if (!resetNewPassword) {
+      setResetError('请输入新密码');
+      return;
+    }
+    if (resetNewPassword.length < 6) {
+      setResetError('密码长度至少6位');
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetError('两次输入的密码不一致');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      await authApi.resetPassword(resetEmail, resetNewPassword);
+      setResetSuccess(true);
+      setTimeout(() => {
+        handleCloseResetDialog();
+        setSuccessMessage('密码重置成功，请使用新密码登录');
+      }, 2000);
+    } catch (err: any) {
+      setResetError(err.message || '密码重置失败，请稍后重试');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -83,244 +139,299 @@ export function LoginPage() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          maxWidth: 480,
+          maxWidth: 400,
           width: '100%',
           px: 4,
         }}
       >
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
+        {/* Logo区域 */}
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Avatar
             sx={{
-              width: 68,
-              height: 68,
-              bgcolor: 'primary.main',
+              width: 72,
+              height: 72,
+              bgcolor: 'transparent',
               mx: 'auto',
               mb: 2,
-              boxShadow: '0 6px 20px rgba(66,99,235,0.30)',
+              boxShadow: 'none',
             }}
-          >
-            <Checkroom sx={{ fontSize: 36 }} />
-          </Avatar>
+            src="/mono_logo.png"
+            alt="MonOS Logo"
+          />
           <Typography variant="h5" fontWeight={700}>
-            智能衣橱
+            MonOS
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            AI 驱动的个人穿搭管理平台
+            智能衣橱 · 博客 · 大脑
           </Typography>
         </Box>
 
+        {/* 登录表单 */}
         <Paper
           elevation={0}
-          sx={{
+          sx={(theme) => ({
             width: '100%',
-            p: 3.5,
+            p: 3,
+            ...getGlassCard(theme),
             borderRadius: 3,
-            ...glassStyles.primary,
-          }}
+          })}
         >
           {error && (
-            <Alert severity="error" variant="outlined" sx={{ mb: 2.5, borderRadius: 2 }}>
+            <Alert severity="error" variant="outlined" sx={{ mb: 2, borderRadius: 2 }}>
               {error}
             </Alert>
           )}
 
-          <Box component="form">
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto',
-                gap: 3,
-                alignItems: 'start',
-              }}
-            >
-              {/* 左侧列：输入区 */}
+          <Box component="form" onSubmit={handleSubmit}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                required
+                fullWidth
+                size="medium"
+                label="邮箱地址"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+                autoComplete="email"
+              />
+              
+              <TextField
+                required
+                fullWidth
+                size="medium"
+                label="密码"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        tabIndex={-1}
+                        size="small"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
               <Box
                 sx={{
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                 }}
               >
-                <TextField
-                  required
-                  fullWidth
-                  size="medium"
-                  label="邮箱地址"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoFocus
-                  autoComplete="email"
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      size="small"
+                      color="primary"
+                    />
+                  }
+                  label={
+                    <Typography variant="body2">记住我</Typography>
+                  }
+                  sx={{ ml: 0 }}
                 />
-                <TextField
-                  required
-                  fullWidth
-                  size="medium"
-                  label="密码"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword(!showPassword)}
-                          edge="end"
-                          tabIndex={-1}
-                          size="small"
-                        >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    pt: 0.25,
-                  }}
+                <Link
+                  component="button"
+                  type="button"
+                  variant="caption"
+                  underline="hover"
+                  onClick={handleOpenResetDialog}
+                  sx={{ cursor: 'pointer', bgcolor: 'transparent', border: 'none', p: 0 }}
                 >
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        size="small"
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Typography variant="body2">记住我</Typography>
-                    }
-                    sx={{ ml: 0 }}
-                  />
-                  <Link
-                    component={RouterLink}
-                    to="#"
-                    variant="caption"
-                    underline="hover"
-                  >
-                    忘记密码？
-                  </Link>
-                </Box>
+                  忘记密码？
+                </Link>
               </Box>
 
-              {/* 右侧列：操作区 */}
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                startIcon={<Checkroom />}
+                sx={(theme) => ({
+                  py: 1.75,
+                  mt: 1,
+                  fontSize: '1rem',
+                  ...getGlassButton(theme, 'contained'),
+                  borderRadius: 3,
+                })}
+              >
+                登录
+              </Button>
+
               <Box
                 sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
-                  minWidth: 140,
-                  justifyContent: 'space-between',
-                  alignItems: 'stretch',
+                  textAlign: 'center',
+                  pt: 1,
+                  borderTop: '1px dashed',
+                  borderColor: 'divider',
                 }}
               >
-                <Box
-                  sx={{
-                    textAlign: 'center',
-                    py: 1.75,
-                    px: 1.5,
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    gap: 0.5,
-                  }}
-                >
+                <Typography variant="body2" color="text.secondary">
+                  还没有账号？{' '}
                   <Link
                     component={RouterLink}
                     to="/register"
-                    variant="body2"
-                    underline="none"
-                    sx={{
-                      fontWeight: 600,
-                      color: 'primary.main',
-                      fontSize: '0.95rem',
-                      '&:hover': {
-                        textDecoration: 'underline',
-                      }
-                    }}
+                    fontWeight={600}
+                    underline="hover"
+                    color="primary.main"
                   >
                     立即注册 →
                   </Link>
-                </Box>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                  <Button
-                    type="submit"
-                    onClick={(e) => handleSubmit(e, 'wardrobe')}
-                    fullWidth
-                    variant="contained"
-                    startIcon={<Checkroom />}
-                    sx={{
-                      py: 1.5,
-                      borderRadius: 8,
-                      ...glassStyles.button.contained,
-                    }}
-                  >
-                    进入衣橱
-                  </Button>
-                  <Button
-                    type="submit"
-                    fullWidth
-                    variant="contained"
-                    startIcon={<Psychology />}
-                    onClick={(e) => handleSubmit(e, 'brain')}
-                    sx={{
-                      py: 1.5,
-                      borderRadius: 8,
-                      background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.85) 0%, rgba(103, 58, 183, 0.9) 100%)',
-                      color: 'white',
-                      boxShadow: '0 4px 15px rgba(156, 39, 176, 0.3)',
-                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 6px 25px rgba(156, 39, 176, 0.4)',
-                        background: 'linear-gradient(135deg, rgba(136, 29, 156, 0.85) 0%, rgba(93, 48, 173, 0.9) 100%)',
-                      },
-                    }}
-                  >
-                    登录大脑
-                  </Button>
-                  <Button
-                    type="submit"
-                    onClick={(e) => handleSubmit(e, 'blog')}
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Book />}
-                    sx={{
-                      py: 1.5,
-                      borderRadius: 8,
-                      borderWidth: 2,
-                      borderColor: 'primary.main',
-                      color: 'primary.main',
-                      '&:hover': {
-                        bgcolor: 'primary.main',
-                        color: 'white',
-                        borderColor: 'primary.main',
-                      },
-                    }}
-                  >
-                    进入博客
-                  </Button>
-                </Box>
+                </Typography>
               </Box>
             </Box>
           </Box>
         </Paper>
 
         <Typography variant="caption" color="text.disabled" sx={{ mt: 2.5 }}>
-          © 2026 Smart Wardrobe · Powered by Morchalen_General
+          © 2026 MonOS · Powered by Morchalen_General
         </Typography>
       </Box>
+
+      {/* 忘记密码 - 重置密码对话框 */}
+      <Dialog
+        open={showResetDialog}
+        onClose={handleCloseResetDialog}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: (theme) => ({
+            ...getGlassDialog(theme),
+            borderRadius: 3,
+          })
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton onClick={handleCloseResetDialog} size="small">
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6" fontWeight={600}>
+              重置密码
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent>
+          {!resetSuccess ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+              {resetError && (
+                <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
+                  {resetError}
+                </Alert>
+              )}
+
+              <TextField
+                required
+                fullWidth
+                size="medium"
+                label="邮箱地址"
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="请输入您的注册邮箱"
+                autoFocus
+              />
+
+              <TextField
+                required
+                fullWidth
+                size="medium"
+                label="新密码"
+                type={showResetPassword ? 'text' : 'password'}
+                value={resetNewPassword}
+                onChange={(e) => setResetNewPassword(e.target.value)}
+                placeholder="至少6位字符"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowResetPassword(!showResetPassword)}
+                        edge="end"
+                        tabIndex={-1}
+                        size="small"
+                      >
+                        {showResetPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                required
+                fullWidth
+                size="medium"
+                label="确认新密码"
+                type="password"
+                value={resetConfirmPassword}
+                onChange={(e) => setResetConfirmPassword(e.target.value)}
+                placeholder="再次输入新密码"
+              />
+
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8125rem' }}>
+                直接输入新密码即可完成重置，无需验证码。
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Avatar
+                sx={{
+                  width: 64,
+                  height: 64,
+                  mx: 'auto',
+                  mb: 2,
+                  bgcolor: 'success.main',
+                }}
+              >
+                ✓
+              </Avatar>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                密码重置成功！
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                请使用新密码登录
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+
+        {!resetSuccess && (
+          <DialogActions sx={{ px: 3, pb: 2.5 }}>
+            <Button
+              onClick={handleCloseResetDialog}
+              color="inherit"
+              sx={{ mr: 1 }}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              variant="contained"
+              disabled={isResetting}
+              sx={(theme) => ({
+                minWidth: 120,
+                ...getGlassButton(theme, 'contained'),
+              })}
+            >
+              {isResetting ? '重置中...' : '立即重置'}
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
 
       <Snackbar
         open={!!successMessage}

@@ -5,12 +5,14 @@ import {
   Avatar,
   Skeleton,
   Chip,
+  useTheme,
 } from '@mui/material';
 import { WbSunny, Cloud, AcUnit, WaterDrop, LocationOn, CalendarToday } from '@mui/icons-material';
 import type { WeatherData } from '@/types';
 import { OutfitRecommendation } from '@/components/wardrobe/OutfitRecommendation';
 import { weatherApi, authApi } from '@/services/api';
 import { useAuthStore } from '@/stores';
+import { getGlassCard } from '@/styles/glass';
 
 const WEATHER_ICONS: Record<string, React.ReactNode> = {
   sunny: <WbSunny sx={{ fontSize: '1.5rem' }} />,
@@ -33,16 +35,8 @@ const WEATHER_ICON_MAP: Record<string, string> = {
   '大雪': 'snowy',
 };
 
-const glassCardStyle = {
-  backdropFilter: 'blur(16px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-  backgroundColor: 'rgba(255, 255, 255, 0.4)',
-  borderRadius: 4,
-  border: '1px solid rgba(255, 255, 255, 0.5)',
-  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
-};
-
 export function TodayPage() {
+  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
   const userID = user?.id || '';
   const [weather, setWeather] = useState<{
@@ -110,7 +104,7 @@ export function TodayPage() {
 
         {weather ? (
           <Box sx={{
-            ...glassCardStyle,
+            ...getGlassCard(theme),
             display: 'flex',
             alignItems: 'center',
             gap: 2,

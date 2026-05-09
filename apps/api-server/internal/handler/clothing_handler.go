@@ -169,6 +169,55 @@ func (h *ClothingHandler) Upload(c *gin.Context) {
 	})
 }
 
+func (h *ClothingHandler) Create(c *gin.Context) {
+	userID, _ := middleware.GetUserID(c)
+
+	var req struct {
+		Name     string   `json:"name" binding:"required"`
+		Category string   `json:"category" binding:"required"`
+		Color    string   `json:"color"`
+		Seasons  []string `json:"seasons"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, 40001, "请求参数错误："+err.Error())
+		return
+	}
+
+	if req.Color == "" {
+		req.Color = "未指定"
+	}
+
+	placeholderURL := "/placeholder-body.png"
+
+	clothing := model.Clothing{
+		UserID:       userID,
+		Name:         req.Name,
+		ImageURL:     placeholderURL,
+		ThumbnailURL: placeholderURL,
+		Category:     req.Category,
+		Color:        req.Color,
+		Seasons:      req.Seasons,
+		WardrobeType: "thin",
+		Status:       "active",
+	}
+
+	if err := h.db.Create(&clothing).Error; err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "duplicate") {
+			response.Error(c, http.StatusConflict, 40901, "该衣物已存在，请勿重复添加")
+			return
+		}
+		response.InternalError(c, err)
+		return
+	}
+
+	response.Created(c, gin.H{
+		"message":      "衣物创建成功！",
+		"clothing_id":  clothing.ID,
+		"clothing_name": clothing.Name,
+	})
+}
+
 func (h *ClothingHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	userID, _ := middleware.GetUserID(c)

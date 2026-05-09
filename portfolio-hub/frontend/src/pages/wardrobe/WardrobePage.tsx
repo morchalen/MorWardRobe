@@ -15,7 +15,7 @@ import { ClothingCard } from '@/components/wardrobe/ClothingCard';
 import { ClothingEditModal } from '@/components/wardrobe/ClothingEditModal';
 import { useWardrobeStore } from '@/stores';
 import type { Clothing } from '@/types';
-import { glassStyles } from '@/styles/glass';
+import { getGlassButton, getGlassInput, getGlassChip, getGlassFab } from '@/styles/glass';
 import { CardSkeleton } from '@/components/common/LoadingComponents';
 import { EmptyStates } from '@/components/common/EmptyState';
 import { ConfirmDialog, useConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -95,10 +95,10 @@ export function WardrobePage() {
           variant="contained"
           startIcon={<Add />}
           onClick={() => navigate('/clothes/add')}
-          sx={{
+          sx={(theme) => ({
+            ...getGlassButton(theme, 'contained'),
             borderRadius: 20,
-            ...glassStyles.button.contained,
-          }}
+          })}
         >
           添加衣物
         </Button>
@@ -118,13 +118,13 @@ export function WardrobePage() {
             </InputAdornment>
           ),
         }}
-        sx={{
+        sx={(theme) => ({
           mb: 2.5,
           '& .MuiOutlinedInput-root': {
             borderRadius: 4,
-            ...glassStyles.input,
+            ...getGlassInput(theme),
           },
-        }}
+        })}
       />
 
       {/* 分类筛选 + 视图切换 */}
@@ -148,7 +148,11 @@ export function WardrobePage() {
               variant={selectedCategory === cat.value ? 'filled' : 'outlined'}
               clickable
               size="medium"
-              sx={{ fontWeight: 500, borderRadius: 2, ...glassStyles.chip }}
+              sx={(theme) => ({ 
+                fontWeight: 500, 
+                borderRadius: 2, 
+                ...getGlassChip(theme, selectedCategory === cat.value ? 'filled' : 'default') 
+              })}
             />
           ))}
         </Box>
@@ -208,13 +212,13 @@ export function WardrobePage() {
         color="primary"
         aria-label="add clothing"
         onClick={() => navigate('/clothes/add')}
-        sx={{
+        sx={(theme) => ({
           position: 'fixed',
           bottom: 32,
           right: 32,
           zIndex: 1000,
-          ...glassStyles.fab,
-        }}
+          ...getGlassFab(theme),
+        })}
       >
         <Add />
       </Fab>

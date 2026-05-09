@@ -23,6 +23,7 @@ func main() {
 		err := db.AutoMigrate(
 			&model.User{},
 			&model.Clothing{},
+			&model.Task{},
 		)
 		if err != nil {
 			log.Fatalf("Failed to migrate database: %v", err)

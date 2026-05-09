@@ -20,7 +20,7 @@ import {
   Checkroom,
   ArrowBack,
 } from '@mui/icons-material';
-import api from '@/services/api';
+import { clothesApi } from '@/services/api';
 
 const categories = [
   { value: '上衣', label: '上装', icon: '👔' },
@@ -52,6 +52,7 @@ export function AddClothingPage() {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleImageSelect = () => {
@@ -93,11 +94,6 @@ export function AddClothingPage() {
     e.preventDefault();
     setError('');
 
-    if (!image) {
-      setError('请选择一张衣物图片');
-      return;
-    }
-
     if (!form.category) {
       setError('请选择衣物分类');
       return;
@@ -105,22 +101,32 @@ export function AddClothingPage() {
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('images', image);
-      formData.append('name', form.name || '未命名');
-      formData.append('category', form.category);
-      formData.append('color', form.color || '未指定');
-      if (form.seasons.length > 0) {
-        form.seasons.forEach((s) => formData.append('seasons[]', s));
+      if (image) {
+        await clothesApi.upload(
+          {
+            images: image,
+            category: form.category,
+            color: form.color || '未指定',
+            name: form.name || undefined,
+            seasons: form.seasons.length > 0 ? form.seasons : undefined,
+          },
+          'thin'
+        );
+      } else {
+        await clothesApi.create({
+          name: form.name || '未命名衣物',
+          category: form.category,
+          color: form.color || '未指定',
+          seasons: form.seasons.length > 0 ? form.seasons : undefined,
+        });
       }
 
-      await api.post('/clothes/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      navigate('/wardrobe');
+      setSuccess('✅ 衣物添加成功！正在跳转到衣橱...');
+      setTimeout(() => {
+        navigate('/wardrobe');
+      }, 1500);
     } catch (err: any) {
-      setError(err.response?.data?.message || '上传失败，请稍后重试');
+      setError(err.response?.data?.message || '添加失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -138,7 +144,7 @@ export function AddClothingPage() {
             添加新衣物
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            上传图片并填写衣物信息
+            填写衣物信息（图片可选）
           </Typography>
         </Box>
       </Box>
@@ -148,6 +154,12 @@ export function AddClothingPage() {
           {error && (
             <Alert severity="error" variant="outlined" sx={{ mb: 3, borderRadius: 3 }}>
               {error}
+            </Alert>
+          )}
+
+          {success && (
+            <Alert severity="success" variant="outlined" sx={{ mb: 3, borderRadius: 3 }}>
+              {success}
             </Alert>
           )}
 
@@ -213,7 +225,7 @@ export function AddClothingPage() {
                 <Box sx={{ textAlign: 'center', color: 'text.secondary' }}>
                   <AddPhotoAlternate sx={{ fontSize: 56, opacity: 0.35, mb: 1 }} />
                   <Typography variant="h6" fontWeight={500} gutterBottom>
-                    点击或拖拽上传图片
+                    点击或拖拽上传图片（可选）
                   </Typography>
                   <Typography variant="caption">
                     支持 JPG、PNG、WebP 格式，最大 10MB

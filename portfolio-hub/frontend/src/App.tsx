@@ -1,7 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Box, useTheme } from '@mui/material';
-import { MainLayout } from '@/components/layout/MainLayout';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
+import { MainLayout } from '@/components/layout/MainLayout';
 
 import { TodayPage } from '@/pages/today/TodayPage';
 import { WardrobePage } from '@/pages/wardrobe/WardrobePage';
@@ -28,7 +28,6 @@ export default function App() {
   const theme = useTheme();
   const primary = theme.palette.primary.main;
   const secondary = theme.palette.secondary.main;
-  const tertiary = theme.palette.info?.main || primary;
 
   return (
     <Box
@@ -48,203 +47,63 @@ export default function App() {
           radial-gradient(at 40% 70%, ${primary}12 0px, transparent 50%),
           radial-gradient(at 90% 90%, ${secondary}10 0px, transparent 50%)
         `,
-        display: 'flex',
-        flexDirection: 'column',
       }}
     >
       <Routes>
+        {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        <Route
-          path="/brain"
-          element={
-            <ProtectedRoute>
-              <BrainPage />
-            </ProtectedRoute>
-          }
-        />
-
+        {/* Protected Routes with Main Layout */}
         <Route
           path="/"
           element={
             <ProtectedRoute>
               <MainLayout>
-                <TodayPage />
+                <Outlet />
               </MainLayout>
             </ProtectedRoute>
           }
-        />
+        >
+          {/* Default redirect to today */}
+          <Route index element={<Navigate to="/today" replace />} />
 
-        <Route
-          path="/wardrobe"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <WardrobePage />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
+          {/* 衣橱模块 */}
+          <Route path="today" element={<TodayPage />} />
+          <Route path="wardrobe" element={<WardrobePage />} />
+          <Route path="lobster" element={<LobsterPage />} />
 
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <ProfilePage />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
+          {/* 衣橱子页面 */}
+          <Route path="clothes/add" element={<AddClothingPage />} />
+          <Route path="clothes/:id" element={<ClothingDetailPage />} />
 
-        <Route
-          path="/lobster"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <LobsterPage />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
+          {/* 博客模块 */}
+          <Route path="blog" element={<BlogHomePage />} />
+          <Route path="blog/new-post" element={<NewPostPage />} />
+          <Route path="blog/post/:slug" element={<PostDetailPage />} />
+          <Route path="blog/write" element={<WriteEditPage />} />
+          <Route path="blog/edit/:slug" element={<WriteEditPage />} />
+          <Route path="blog/profile" element={<BlogProfilePage />} />
+          <Route path="blog/status" element={<ServerStatusPage />} />
+          <Route path="blog/admin" element={<AdminPanelPage />} />
 
-        <Route
-          path="/clothes/add"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <AddClothingPage />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
+          {/* 博客分类 */}
+          <Route path="blog/category/:category" element={<BlogHomePage />} />
 
-        <Route
-          path="/clothes/:id"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <ClothingDetailPage />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
+          {/* 大脑模块 */}
+          <Route path="brain" element={<BrainPage />} />
 
-        <Route
-          path="/admin/dashboard"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <AdminDashboard />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
+          {/* 我的模块 */}
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="change-password" element={<ChangePasswordPage />} />
 
-        <Route
-          path="/admin/users"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <UsersManagement />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
+          {/* 管理模块 - 衣橱 */}
+          <Route path="admin/dashboard" element={<AdminDashboard />} />
+          <Route path="admin/users" element={<UsersManagement />} />
+          <Route path="admin/clothings" element={<ClothingsManagement />} />
+        </Route>
 
-        <Route
-          path="/admin/clothings"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <ClothingsManagement />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/change-password"
-          element={
-            <ProtectedRoute>
-              <ChangePasswordPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/blog"
-          element={
-            <ProtectedRoute>
-              <BlogHomePage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/blog/new-post"
-          element={
-            <ProtectedRoute>
-              <NewPostPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/blog/post/:slug"
-          element={
-            <ProtectedRoute>
-              <PostDetailPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/blog/write"
-          element={
-            <ProtectedRoute>
-              <WriteEditPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/blog/edit/:slug"
-          element={
-            <ProtectedRoute>
-              <WriteEditPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/blog/profile"
-          element={
-            <ProtectedRoute>
-              <BlogProfilePage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/blog/status"
-          element={
-            <ProtectedRoute>
-              <ServerStatusPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/blog/admin"
-          element={
-            <ProtectedRoute>
-              <AdminPanelPage />
-            </ProtectedRoute>
-          }
-        />
-
+        {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Box>

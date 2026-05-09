@@ -1,6 +1,7 @@
 import { Card, CardMedia, CardContent, Typography, Box, IconButton, Chip } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
 import type { Clothing } from '@/types';
+import { getGlassCard } from '@/styles/glass';
 
 interface ClothingCardProps {
   clothing: Clothing;
@@ -25,26 +26,19 @@ export function ClothingCard({ clothing, onEdit, onDelete }: ClothingCardProps) 
   return (
     <Card
       variant="outlined"
-      sx={{
-        borderRadius: 2.5,
+      sx={(theme) => ({
         overflow: 'visible',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        backgroundColor: 'rgba(255, 255, 255, 0.4)',
-        border: '1px solid rgba(255, 255, 255, 0.5)',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        ...getGlassCard(theme),
+        borderRadius: 2.5,
         cursor: 'pointer',
         '&:hover': {
           transform: 'translateY(-2px)',
-          backgroundColor: 'rgba(255, 255, 255, 0.55)',
-          border: '1px solid rgba(255, 255, 255, 0.7)',
-          boxShadow: '0 8px 24px 0 rgba(31, 38, 135, 0.1)',
           '& .clothing-actions': {
             opacity: 1,
             transform: 'translateY(0)',
           },
         },
-      }}
+      })}
     >
       <Box sx={{ position: 'relative', overflow: 'hidden' }}>
         <CardMedia

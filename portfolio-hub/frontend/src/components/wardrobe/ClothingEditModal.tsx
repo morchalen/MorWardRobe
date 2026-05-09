@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { clothesApi } from '@/services/api';
 import type { Clothing } from '@/types';
-import { glassStyles } from '@/styles/glass';
+import { getGlassDialog, getGlassButton } from '@/styles/glass';
 
 const CATEGORIES = [
   { value: '上衣', label: '上装' },
@@ -70,10 +70,10 @@ export function ClothingEditModal({ open, onClose, clothing, onSuccess }: Clothi
       maxWidth="sm"
       fullWidth
       PaperProps={{
-        sx: {
+        sx: (theme) => ({
+          ...getGlassDialog(theme),
           borderRadius: 3,
-          ...glassStyles.dialog,
-        },
+        }),
       }}
     >
       <DialogTitle sx={{ fontWeight: 600, fontSize: '1.25rem' }}>
@@ -153,24 +153,24 @@ export function ClothingEditModal({ open, onClose, clothing, onSuccess }: Clothi
       <DialogActions sx={{ p: 2.5, gap: 1.5 }}>
         <Button
           onClick={onClose}
-          sx={{
+          sx={(theme) => ({
+            ...getGlassButton(theme, 'text'),
             borderRadius: 2,
             fontWeight: 500,
             px: 3,
-            ...glassStyles.button.text,
-          }}
+          })}
         >
           取消
         </Button>
         <Button
           onClick={handleSubmit}
           variant="contained"
-          sx={{
+          sx={(theme) => ({
+            ...getGlassButton(theme, 'contained'),
             borderRadius: 2,
             fontWeight: 500,
             px: 4,
-            ...glassStyles.button.contained,
-          }}
+          })}
           disabled={!name.trim()}
         >
           保存

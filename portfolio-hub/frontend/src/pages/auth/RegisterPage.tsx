@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff, Checkroom, PersonAdd } from '@mui/icons-material';
 import { useAuthStore } from '@/stores';
-import { glassStyles } from '@/styles/glass';
+import { getGlassCard, getGlassButton } from '@/styles/glass';
 
 export function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -116,12 +116,12 @@ export function RegisterPage() {
 
         <Paper
           elevation={0}
-          sx={{
+          sx={(theme) => ({
             width: '100%',
             p: 3.5,
+            ...getGlassCard(theme),
             borderRadius: 3,
-            ...glassStyles.primary,
-          }}
+          })}
         >
           {error && (
             <Alert severity="error" variant="outlined" sx={{ mb: 2.5, borderRadius: 2 }}>
@@ -270,11 +270,11 @@ export function RegisterPage() {
                   fullWidth
                   variant="outlined"
                   startIcon={<PersonAdd />}
-                  sx={{
+                  sx={(theme) => ({
                     py: 1.75,
+                    ...getGlassButton(theme, 'outlined'),
                     borderRadius: 10,
-                    ...glassStyles.button.outlined,
-                  }}
+                  })}
                 >
                   注册
                 </Button>

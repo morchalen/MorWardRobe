@@ -23,7 +23,6 @@ import {
 } from '@mui/icons-material';
 import MDEditor from '@uiw/react-md-editor';
 import '@uiw/react-md-editor/markdown-editor.css';
-import { BlogLayout } from './BlogLayout';
 import { blogApi, lobsterApi } from '@/services/api';
 
 interface Post {
@@ -158,162 +157,158 @@ export function WriteEditPage() {
 
   if (postLoading) {
     return (
-      <BlogLayout>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-          <CircularProgress />
-        </Box>
-      </BlogLayout>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   return (
-    <BlogLayout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }} data-color-mode="light">
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }} data-color-mode="light">
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Button
+          onClick={() => navigate('/blog')}
+          startIcon={<ArrowBack sx={{ fontSize: 14 }} />}
+          size="small"
+          sx={{ textTransform: 'none' }}
+        >
+          返回文章列表
+        </Button>
+        <Box sx={{ display: 'flex', gap: 1.2 }}>
           <Button
-            onClick={() => navigate('/blog')}
-            startIcon={<ArrowBack sx={{ fontSize: 14 }} />}
+            variant="outlined"
+            onClick={handleSave}
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={16} /> : <Save sx={{ fontSize: 14 }} />}
             size="small"
-            sx={{ textTransform: 'none' }}
           >
-            返回文章列表
+            {isEditing ? '更新文章' : '发布文章'}
           </Button>
-          <Box sx={{ display: 'flex', gap: 1.2 }}>
-            <Button
-              variant="outlined"
-              onClick={handleSave}
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={16} /> : <Save sx={{ fontSize: 14 }} />}
-              size="small"
+        </Box>
+      </Box>
+
+      {error && (
+        <Alert severity="error" onClose={() => setError('')} sx={{ fontSize: '0.725rem' }}>
+          {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" onClose={() => setSuccess('')} sx={{ fontSize: '0.725rem' }}>
+          {success}
+        </Alert>
+      )}
+
+      <Paper sx={{ p: 2.8, backdropFilter: 'blur(16px) saturate(170%)', WebkitBackdropFilter: 'blur(16px) saturate(170%)', backgroundColor: 'rgba(255, 255, 255, 0.55)', border: '1px solid rgba(255, 255, 255, 0.5)', boxShadow: '0 2px 12px rgba(31, 38, 135, 0.04)' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField
+            label="文章标题"
+            size="small"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            fullWidth
+            placeholder="输入文章标题"
+          />
+
+          <FormControl fullWidth size="small">
+            <InputLabel>分类</InputLabel>
+            <Select
+              value={category}
+              label="分类"
+              onChange={(e) => setCategory(e.target.value)}
             >
-              {isEditing ? '更新文章' : '发布文章'}
+              <MenuItem value="">无分类</MenuItem>
+              {categories.map((cat) => (
+                <MenuItem key={cat} value={cat}>
+                  {cat}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Box>
+            <TextField
+              label="封面图片URL"
+              size="small"
+              value={cover}
+              onChange={(e) => setCover(e.target.value)}
+              fullWidth
+              placeholder="输入封面图片URL或点击上传"
+            />
+            <Button
+              component="label"
+              variant="outlined"
+              startIcon={<Upload sx={{ fontSize: 14 }} />}
+              size="small"
+              sx={{ mt: 1.5 }}
+            >
+              上传封面
+              <input type="file" hidden accept="image/*" onChange={handleCoverUpload} />
             </Button>
+            {cover && (
+              <Box sx={{ mt: 1.5 }}>
+                <img
+                  src={cover}
+                  alt="封面预览"
+                  style={{ maxWidth: 220, maxHeight: 150, borderRadius: 8 }}
+                />
+              </Box>
+            )}
+          </Box>
+
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
+              <Typography variant="subtitle2" sx={{ fontSize: '0.725rem' }}>
+                文章内容（支持 Markdown）
+              </Typography>
+              <Tooltip title="使用龙虾AI智能排版，优化Markdown格式和结构">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={aiFormatting ? <CircularProgress size={14} /> : <AutoAwesomeIcon sx={{ fontSize: 15 }} />}
+                  onClick={handleAIFormat}
+                  disabled={aiFormatting || !content.trim()}
+                  sx={{
+                    textTransform: 'none',
+                    fontSize: '0.7rem',
+                    borderRadius: 2,
+                    px: 1.5,
+                    py: 0.4,
+                    backdropFilter: 'blur(12px) saturate(150%)',
+                    WebkitBackdropFilter: 'blur(12px) saturate(150%)',
+                    bgcolor: aiFormatting ? 'rgba(102, 126, 234, 0.1)' : 'rgba(102, 126, 234, 0.08)',
+                    border: `1px solid ${aiFormatting ? 'rgba(102, 126, 234, 0.3)' : 'rgba(102, 126, 234, 0.2)'}`,
+                    color: '#667eea',
+                    transition: 'all 0.22s ease-out',
+                    '&:hover:not(:disabled)': {
+                      bgcolor: 'rgba(102, 126, 234, 0.18)',
+                      border: '1px solid rgba(102, 126, 234, 0.4)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.15)',
+                    },
+                    '&:disabled': {
+                      color: 'text.disabled',
+                      borderColor: 'divider',
+                    },
+                  }}
+                >
+                  {aiFormatting ? '排版中...' : '🦞 AI排版'}
+                </Button>
+              </Tooltip>
+            </Box>
+            <MDEditor
+              value={content}
+              onChange={(val) => setContent(val || '')}
+              height={350}
+              preview="edit"
+              data-color-mode="light"
+              style={{
+                fontSize: '0.725rem',
+              }}
+            />
           </Box>
         </Box>
-
-        {error && (
-          <Alert severity="error" onClose={() => setError('')} sx={{ fontSize: '0.725rem' }}>
-            {error}
-          </Alert>
-        )}
-
-        {success && (
-          <Alert severity="success" onClose={() => setSuccess('')} sx={{ fontSize: '0.725rem' }}>
-            {success}
-          </Alert>
-        )}
-
-        <Paper sx={{ p: 2.8, backdropFilter: 'blur(16px) saturate(170%)', WebkitBackdropFilter: 'blur(16px) saturate(170%)', backgroundColor: 'rgba(255, 255, 255, 0.55)', border: '1px solid rgba(255, 255, 255, 0.5)', boxShadow: '0 2px 12px rgba(31, 38, 135, 0.04)' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="文章标题"
-              size="small"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              fullWidth
-              placeholder="输入文章标题"
-            />
-
-            <FormControl fullWidth size="small">
-              <InputLabel>分类</InputLabel>
-              <Select
-                value={category}
-                label="分类"
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <MenuItem value="">无分类</MenuItem>
-                {categories.map((cat) => (
-                  <MenuItem key={cat} value={cat}>
-                    {cat}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <Box>
-              <TextField
-                label="封面图片URL"
-                size="small"
-                value={cover}
-                onChange={(e) => setCover(e.target.value)}
-                fullWidth
-                placeholder="输入封面图片URL或点击上传"
-              />
-              <Button
-                component="label"
-                variant="outlined"
-                startIcon={<Upload sx={{ fontSize: 14 }} />}
-                size="small"
-                sx={{ mt: 1.5 }}
-              >
-                上传封面
-                <input type="file" hidden accept="image/*" onChange={handleCoverUpload} />
-              </Button>
-              {cover && (
-                <Box sx={{ mt: 1.5 }}>
-                  <img
-                    src={cover}
-                    alt="封面预览"
-                    style={{ maxWidth: 220, maxHeight: 150, borderRadius: 8 }}
-                  />
-                </Box>
-              )}
-            </Box>
-
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
-                <Typography variant="subtitle2" sx={{ fontSize: '0.725rem' }}>
-                  文章内容（支持 Markdown）
-                </Typography>
-                <Tooltip title="使用龙虾AI智能排版，优化Markdown格式和结构">
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={aiFormatting ? <CircularProgress size={14} /> : <AutoAwesomeIcon sx={{ fontSize: 15 }} />}
-                    onClick={handleAIFormat}
-                    disabled={aiFormatting || !content.trim()}
-                    sx={{
-                      textTransform: 'none',
-                      fontSize: '0.7rem',
-                      borderRadius: 2,
-                      px: 1.5,
-                      py: 0.4,
-                      backdropFilter: 'blur(12px) saturate(150%)',
-                      WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-                      bgcolor: aiFormatting ? 'rgba(102, 126, 234, 0.1)' : 'rgba(102, 126, 234, 0.08)',
-                      border: `1px solid ${aiFormatting ? 'rgba(102, 126, 234, 0.3)' : 'rgba(102, 126, 234, 0.2)'}`,
-                      color: '#667eea',
-                      transition: 'all 0.22s ease-out',
-                      '&:hover:not(:disabled)': {
-                        bgcolor: 'rgba(102, 126, 234, 0.18)',
-                        border: '1px solid rgba(102, 126, 234, 0.4)',
-                        transform: 'translateY(-1px)',
-                        boxShadow: '0 2px 8px rgba(102, 126, 234, 0.15)',
-                      },
-                      '&:disabled': {
-                        color: 'text.disabled',
-                        borderColor: 'divider',
-                      },
-                    }}
-                  >
-                    {aiFormatting ? '排版中...' : '🦞 AI排版'}
-                  </Button>
-                </Tooltip>
-              </Box>
-              <MDEditor
-                value={content}
-                onChange={(val) => setContent(val || '')}
-                height={350}
-                preview="edit"
-                data-color-mode="light"
-                style={{
-                  fontSize: '0.725rem',
-                }}
-              />
-            </Box>
-          </Box>
-        </Paper>
-      </Box>
-    </BlogLayout>
+      </Paper>
+    </Box>
   );
 }

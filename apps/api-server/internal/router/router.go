@@ -45,6 +45,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 
 		protected.GET("/clothes", clothingHandler.List)
 		protected.GET("/clothes/:id", clothingHandler.GetByID)
+		protected.POST("/clothes", clothingHandler.Create)
 		protected.POST("/clothes/upload", clothingHandler.Upload)
 		protected.PUT("/clothes/:id", clothingHandler.Update)
 		protected.DELETE("/clothes/:id", clothingHandler.Delete)
@@ -54,6 +55,12 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		protected.POST("/lobster/chat", lobsterHandler.Chat)
 		protected.GET("/lobster/recommend-outfit", lobsterHandler.RecommendOutfit)
 		protected.POST("/lobster/rate-outfit", lobsterHandler.RateOutfit)
+
+		taskHandler := handler.NewTaskHandler(db)
+		protected.GET("/tasks", taskHandler.List)
+		protected.POST("/tasks", taskHandler.Create)
+		protected.PUT("/tasks/:id", taskHandler.Update)
+		protected.DELETE("/tasks/:id", taskHandler.Delete)
 
 		admin := protected.Group("/admin")
 		admin.Use(middleware.AdminRequired())

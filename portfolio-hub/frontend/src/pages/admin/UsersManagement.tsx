@@ -29,6 +29,8 @@ import {
   Tooltip,
   CircularProgress,
   Pagination,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Search,
@@ -43,11 +45,15 @@ import {
   Visibility,
   Image as ImageIcon,
   Checkroom,
+  Lock,
+  VpnKey,
 } from '@mui/icons-material';
 import { adminApi } from '@/services/api';
 import { User, Clothing } from '@/types';
 
 export function UsersManagement() {
+  const [activeTab, setActiveTab] = useState<'wardrobe' | 'blog'>('wardrobe');
+  
   console.log('%c========================================', 'color: #ffd700; font-weight: bold');
   console.log('%c[DEBUG] UsersManagement 组件挂载!', 'color: #ff6347; font-weight: bold');
   console.log('%c[DEBUG] 当前时间:', 'color: #6b7280', new Date().toISOString());
@@ -92,6 +98,66 @@ export function UsersManagement() {
     message: string;
     type: 'success' | 'error';
   }>({ open: false, message: '', type: 'success' });
+
+  // 博客管理相关状态
+  const [blogEditingUser, setBlogEditingUser] = useState<User | null>(null);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  // 博客管理函数
+  const handleBlogEditRole = async (userId: string, newRole: string) => {
+    try {
+      await adminApi.updateUser(userId, { role: newRole });
+      setNotification({ open: true, message: '用户角色更新成功', type: 'success' });
+      fetchUsers();
+    } catch (err) {
+      setNotification({ open: true, message: '角色更新失败', type: 'error' });
+    }
+  };
+
+  const handleBlogToggleStatus = async (userId: string, currentStatus: boolean) => {
+    try {
+      await adminApi.updateUser(userId, { is_active: !currentStatus });
+      setNotification({ open: true, message: !currentStatus ? '用户已启用' : '用户已禁用', type: 'success' });
+      fetchUsers();
+    } catch (err) {
+      setNotification({ open: true, message: '状态更新失败', type: 'error' });
+    }
+  };
+
+  const handleBlogResetPassword = (userId: string) => {
+    setResetPasswordUser(userId);
+    setPasswordDialogOpen(true);
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+  };
+
+  const handleBlogSubmitPassword = async () => {
+    if (!resetPasswordUser) return;
+    
+    if (newPassword.length < 6) {
+      setPasswordError('密码长度至少6位');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的密码不一致');
+      return;
+    }
+
+    try {
+      await adminApi.updateUser(resetPasswordUser, { password: newPassword });
+      setNotification({ open: true, message: '密码重置成功', type: 'success' });
+      setPasswordDialogOpen(false);
+      setResetPasswordUser(null);
+    } catch (err) {
+      setNotification({ open: true, message: '密码重置失败', type: 'error' });
+    }
+  };
 
   const fetchUsers = async () => {
     console.log('%c========================================', 'color: #22c55e; font-weight: bold');
@@ -251,7 +317,7 @@ export function UsersManagement() {
             用户管理
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            管理系统中的所有用户
+            统一管理衣橱和博客系统的所有用户
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
@@ -262,6 +328,36 @@ export function UsersManagement() {
         </Box>
       </Box>
 
+      {/* Tab 切换器 */}
+      <Card sx={{ p: 1 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue)}
+          sx={{
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: '0.9rem',
+            },
+          }}
+        >
+          <Tab 
+            value="wardrobe" 
+            icon={<Checkroom sx={{ mr: 1 }} />}
+            label="衣橱管理" 
+            iconPosition="start"
+          />
+          <Tab 
+            value="blog" 
+            icon={<Edit sx={{ mr: 1 }} />}
+            label="博客管理"
+            iconPosition="start"
+          />
+        </Tabs>
+      </Card>
+
+      {activeTab === 'wardrobe' && (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Card sx={{ p: 2 }}>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <TextField
@@ -393,6 +489,108 @@ export function UsersManagement() {
           </>
         )}
       </Card>
+      </Box>
+      )}
+
+      {/* 博客管理 Tab 内容 */}
+      {activeTab === 'blog' && (
+      <Card sx={{ p: 2 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+          博客用户管理
+          <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 2, fontWeight: 400 }}>
+            - 角色权限、账户状态、密码重置
+          </Typography>
+        </Typography>
+        
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'grey.100' }}>
+                  <TableCell sx={{ fontWeight: 700 }}>邮箱</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>角色</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>状态</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>注册时间</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }} align="center">操作</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            bgcolor: user.role === 'admin' ? 'primary.main' : 'grey.400',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          {user.email?.charAt(0).toUpperCase() || 'U'}
+                        </Avatar>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {user.email}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={user.role}
+                        size="small"
+                        onChange={(e) => handleBlogEditRole(user.id, e.target.value)}
+                        sx={{ minWidth: 120 }}
+                      >
+                        <MenuItem value="user">普通用户</MenuItem>
+                        <MenuItem value="admin">管理员</MenuItem>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={user.is_active ? '正常' : '禁用'}
+                        color={user.is_active ? 'success' : 'error'}
+                        size="small"
+                        onClick={() => handleBlogToggleStatus(user.id, user.is_active)}
+                        sx={{ cursor: 'pointer', fontWeight: 500 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {user.created_at ? new Date(user.created_at).toLocaleDateString('zh-CN') : '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                        <Tooltip title="重置密码">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleBlogResetPassword(user.id)}
+                            sx={{ color: 'warning.main' }}
+                          >
+                            <VpnKey fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {users.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
+                      <Typography color="text.secondary">暂无用户数据</Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Card>
+      )}
 
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>创建用户</DialogTitle>
@@ -537,6 +735,51 @@ export function UsersManagement() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setUserClothesDialogOpen(false)}>关闭</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 博客管理 - 密码重置对话框 */}
+      <Dialog open={passwordDialogOpen} onClose={() => setPasswordDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <VpnKey color="warning" />
+            重置用户密码
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            为该用户设置新密码，密码长度至少6位
+          </Alert>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {passwordError && (
+              <Alert severity="error" onClose={() => setPasswordError('')}>
+                {passwordError}
+              </Alert>
+            )}
+            <TextField
+              label="新密码"
+              type="password"
+              fullWidth
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoFocus
+            />
+            <TextField
+              label="确认密码"
+              type="password"
+              fullWidth
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              error={!!confirmPassword && confirmPassword !== newPassword}
+              helperText={!!confirmPassword && confirmPassword !== newPassword ? '两次输入的密码不一致' : ''}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPasswordDialogOpen(false)}>取消</Button>
+          <Button variant="contained" color="warning" startIcon={<Lock />} onClick={handleBlogSubmitPassword}>
+            重置密码
+          </Button>
         </DialogActions>
       </Dialog>
 

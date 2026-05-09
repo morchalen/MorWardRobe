@@ -75,3 +75,20 @@ func (c *Clothing) BeforeUpdate(tx *gorm.DB) error {
 	}
 	return nil
 }
+
+type Task struct {
+	ID          string `gorm:"size:36;primaryKey" json:"id"`
+	UserID      string `gorm:"size:36;not null;index" json:"user_id"`
+	Content     string `gorm:"size:500;not null" json:"content"`
+	Quadrant    string `gorm:"size:20;not null;index" json:"quadrant"`
+	IsCompleted bool   `gorm:"default:false" json:"is_completed"`
+	CreatedAt   int64  `gorm:"autoCreateTime:milli" json:"created_at"`
+	CompletedAt int64  `json:"completed_at"`
+}
+
+func (t *Task) BeforeCreate(tx *gorm.DB) error {
+	if t.ID == "" {
+		t.ID = uuid.New().String()
+	}
+	return nil
+}

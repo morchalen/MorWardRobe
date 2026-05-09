@@ -156,7 +156,7 @@ export function useM3Theme() {
     const theme = createTheme({
       ...palette,
       shape: {
-        borderRadius: 16,
+        borderRadius: 6,
       },
       typography: {
         fontFamily: [
@@ -187,7 +187,7 @@ export function useM3Theme() {
         MuiButton: {
           styleOverrides: {
             root: {
-              borderRadius: 28,
+              borderRadius: 6,
               padding: '6px 14px',
               fontSize: '0.75rem',
               minWidth: 'auto',
@@ -209,7 +209,7 @@ export function useM3Theme() {
         MuiCard: {
           styleOverrides: {
             root: {
-              borderRadius: 16,
+              borderRadius: 6,
               backgroundImage: 'none',
               boxShadow: `0 1px 3px 0 ${hexToRgba(shadow, 0.08)}, 0 1px 2px -1px ${hexToRgba(shadow, 0.05)}`,
             },
@@ -218,7 +218,7 @@ export function useM3Theme() {
         MuiPaper: {
           styleOverrides: {
             root: {
-              borderRadius: 16,
+              borderRadius: 6,
             },
             elevation1: {
               boxShadow: `0 1px 3px 0 ${hexToRgba(shadow, 0.08)}, 0 1px 2px -1px ${hexToRgba(shadow, 0.05)}`,
@@ -229,7 +229,7 @@ export function useM3Theme() {
           styleOverrides: {
             root: {
               '& .MuiOutlinedInput-root': {
-                borderRadius: 12,
+                borderRadius: 6,
                 '&:hover fieldset': {
                   borderColor: hexToRgba(outline, 0.7),
                 },
@@ -244,7 +244,7 @@ export function useM3Theme() {
         MuiChip: {
           styleOverrides: {
             root: {
-              borderRadius: 8,
+              borderRadius: 6,
               fontWeight: 500,
               fontSize: '0.6875rem',
               height: 20,
@@ -255,21 +255,21 @@ export function useM3Theme() {
         MuiAvatar: {
           styleOverrides: {
             root: {
-              borderRadius: 12,
+              borderRadius: 6,
             },
           },
         },
         MuiListItemButton: {
           styleOverrides: {
             root: {
-              borderRadius: 12,
+              borderRadius: 6,
             },
           },
         },
         MuiIconButton: {
           styleOverrides: {
             root: {
-              borderRadius: 12,
+              borderRadius: 6,
             },
             sizeSmall: {
               padding: 6,
@@ -280,7 +280,7 @@ export function useM3Theme() {
           styleOverrides: {
             root: {
               '& .MuiPaginationItem-root': {
-                borderRadius: 8,
+                borderRadius: 6,
                 minWidth: 28,
                 height: 28,
                 fontSize: '0.7rem',
@@ -291,7 +291,7 @@ export function useM3Theme() {
         MuiDialog: {
           styleOverrides: {
             paper: {
-              borderRadius: 20,
+              borderRadius: 6,
             },
           },
         },

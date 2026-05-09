@@ -22,7 +22,6 @@ import {
 } from '@mui/icons-material';
 import MDEditor from '@uiw/react-md-editor';
 import '@uiw/react-md-editor/markdown-editor.css';
-import { BlogLayout } from './BlogLayout';
 import { blogApi, lobsterApi } from '@/services/api';
 
 const DRAFT_CACHE_KEY = 'blog_new_post_draft';
@@ -172,8 +171,8 @@ export function NewPostPage() {
   };
 
   return (
-    <BlogLayout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }} data-color-mode="light">
+    <>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }} data-color-mode="light">
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Button
@@ -338,6 +337,6 @@ export function NewPostPage() {
           </Paper>
         )}
       </Box>
-    </BlogLayout>
+    </>
   );
 }

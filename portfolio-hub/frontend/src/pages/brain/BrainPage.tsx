@@ -40,22 +40,27 @@ const QUADRANTS: QuadrantConfig[] = [
   { key: 'entertainment', label: '娱乐', icon: <EntertainmentIcon sx={{ fontSize: 12 }} /> },
 ];
 
-function loadFromCache(): Task[] {
+function getStorageKey(userId: string | null | undefined): string {
+  const uid = userId || 'anonymous';
+  return `brain_tasks_${uid}`;
+}
+
+function loadFromCache(userId: string | null | undefined): Task[] {
   try {
-    const saved = localStorage.getItem('brain_tasks');
+    const saved = localStorage.getItem(getStorageKey(userId));
     return saved ? JSON.parse(saved) : [];
   } catch { return []; }
 }
 
-function saveToCache(tasks: Task[]) {
-  localStorage.setItem('brain_tasks', JSON.stringify(tasks));
+function saveToCache(tasks: Task[], userId: string | null | undefined) {
+  localStorage.setItem(getStorageKey(userId), JSON.stringify(tasks));
 }
 
 export function BrainPage() {
   const theme = useTheme();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState<Task[]>(loadFromCache);
+  const [tasks, setTasks] = useState<Task[]>(loadFromCache(user?.id));
   const [synced, setSynced] = useState(false);
   const [activeInput, setActiveInput] = useState<string | null>(null);
   const [inputValues, setInputValues] = useState<Record<string, string>>({
@@ -79,7 +84,7 @@ export function BrainPage() {
         const remote = data?.tasks || [];
         if (remote.length > 0) {
           setTasks(remote);
-          saveToCache(remote);
+          saveToCache(remote, user.id);
         }
       })
       .catch(() => {})
@@ -87,7 +92,7 @@ export function BrainPage() {
   }, [user]);
 
   useEffect(() => {
-    saveToCache(tasks);
+    saveToCache(tasks, user?.id);
   }, [tasks]);
 
   const getByQuadrant = (q: string): Task[] => tasks.filter((t) => t.quadrant === q);

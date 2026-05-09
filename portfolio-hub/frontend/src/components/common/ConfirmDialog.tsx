@@ -134,7 +134,7 @@ export function ConfirmDialog({
               justifyContent: 'center',
             }}
           >
-            {config.icon}
+            <config.icon />
           </Box>
           <Typography
             variant="h6"
